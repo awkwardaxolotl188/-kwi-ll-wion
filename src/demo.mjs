@@ -3,6 +3,9 @@ const a = (answer, tier, aliases = []) => ({ answer, tier, aliases });
 // Tiers: 'plankton' (10) | 'tooclever' (15) | 'schooler' (30) | 'rare' (60) | 'deepcut' (85) | 'krillion' (100)
 //npx wrangler deploy --config wrangler.production.jsonc to start
 //DELETE FROM puzzles; DELETE FROM answers; DELETE FROM runs; in cloudflare console
+//git add src/demo.mjs git commit -m "Add custom questions" git push 
+// SAVES CHANGES I GOTTA DO THAT
+
 const POOL = [
   {
     text: 'Question 1',
