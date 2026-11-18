@@ -1,13 +1,13 @@
 import { DEMO } from './demo.mjs';
 import { TIERS, matchAnswer, etDate, resetAt, ROUND_MS, PREVIEW_MS } from './rules.mjs';
 
-const KEY = 'ok_static_v2';
-const load = () => JSON.parse(localStorage.getItem(KEY) || '{"puzzles":{},"runs":{}}');
+const KEY = 'ok_static_v3';
+const load = () => { try { return JSON.parse(localStorage.getItem(KEY)) || { puzzles: {}, runs: {} }; } catch { return { puzzles: {}, runs: {} }; } };
 const save = db => localStorage.setItem(KEY, JSON.stringify(db));
 const json = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } });
 
 function puzzleFor(db, date) {
-  if (!db.puzzles[date]) {
+  if (!db.puzzles[date] || !Array.isArray(db.puzzles[date].prompts)) {
     const prompts = DEMO.prompts;
     db.puzzles[date] = { date, dayNumber: Math.max(1, Math.floor((Date.parse(date) - Date.parse('2026-07-16')) / 86400000) + 1), source: DEMO.source, prompts };
     save(db);
@@ -17,7 +17,7 @@ function puzzleFor(db, date) {
 
 const promptDTO = p => ({ date: p.date, dayNumber: p.dayNumber, sample: false, source: p.source, resetsAt: resetAt(p.date), prompts: p.prompts.map(({ id, text }) => ({ id, text })) });
 const stateDTO = (db, run) => {
-  const results = Array.isArray(run.results) ? run.results : [];
+  const results = Array.isArray(run?.results) ? run.results : [];
   return { ...promptDTO(puzzleFor(db, run.date)), runId: run.id, mode: run.mode, round: run.next_round, roundStart: run.round_start, pausedAt: run.paused_at || null, serverNow: Date.now(), completed: !!run.completed, results, score: results.reduce((s, r) => s + (r.score || 0), 0) };
 };
 
