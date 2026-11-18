@@ -1,7 +1,7 @@
 import { DEMO } from './demo.mjs';
 import { TIERS, matchAnswer, etDate, resetAt, ROUND_MS, PREVIEW_MS } from './rules.mjs';
 
-const KEY = 'ok_static_v1';
+const KEY = 'ok_static_v2';
 const load = () => JSON.parse(localStorage.getItem(KEY) || '{"puzzles":{},"runs":{}}');
 const save = db => localStorage.setItem(KEY, JSON.stringify(db));
 const json = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } });
@@ -16,7 +16,10 @@ function puzzleFor(db, date) {
 }
 
 const promptDTO = p => ({ date: p.date, dayNumber: p.dayNumber, sample: false, source: p.source, resetsAt: resetAt(p.date), prompts: p.prompts.map(({ id, text }) => ({ id, text })) });
-const stateDTO = (db, run) => ({ ...promptDTO(puzzleFor(db, run.date)), runId: run.id, mode: run.mode, round: run.next_round, roundStart: run.round_start, pausedAt: run.paused_at || null, serverNow: Date.now(), completed: !!run.completed, results: run.results, score: run.results.reduce((s, r) => s + r.score, 0) });
+const stateDTO = (db, run) => {
+  const results = Array.isArray(run.results) ? run.results : [];
+  return { ...promptDTO(puzzleFor(db, run.date)), runId: run.id, mode: run.mode, round: run.next_round, roundStart: run.round_start, pausedAt: run.paused_at || null, serverNow: Date.now(), completed: !!run.completed, results, score: results.reduce((s, r) => s + (r.score || 0), 0) };
+};
 
 const origFetch = window.fetch.bind(window);
 window.fetch = async (input, init = {}) => {
@@ -30,7 +33,7 @@ window.fetch = async (input, init = {}) => {
   if (path === '/api/health') return json({ ok: true, database: true, storage: false });
   if (path === '/api/state') {
     const run = db.runs[url.searchParams.get('run')];
-    return run ? json(stateDTO(db, run)) : json({ error: 'Dive not found.' }, 404);
+    return run ? json({ state: stateDTO(db, run) }) : json({ error: 'Dive not found.' }, 404);
   }
   if (path === '/api/review') {
     const run = db.runs[url.searchParams.get('run')];
