@@ -1,7 +1,7 @@
 import { DEMO } from './demo.mjs';
 import { TIERS, matchAnswer, etDate, resetAt, ROUND_MS, PREVIEW_MS } from './rules.mjs';
 
-const KEY = 'ok_static_v3';
+const KEY = 'ok_static_v4';
 const load = () => { try { return JSON.parse(localStorage.getItem(KEY)) || { puzzles: {}, runs: {} }; } catch { return { puzzles: {}, runs: {} }; } };
 const save = db => localStorage.setItem(KEY, JSON.stringify(db));
 const json = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } });
@@ -33,7 +33,7 @@ window.fetch = async (input, init = {}) => {
   if (path === '/api/health') return json({ ok: true, database: true, storage: false });
   if (path === '/api/state') {
     const run = db.runs[url.searchParams.get('run')];
-    return run ? json({ state: stateDTO(db, run) }) : json({ error: 'Dive not found.' }, 404);
+    return run ? json(stateDTO(db, run)) : json({ error: 'Dive not found.' }, 404);
   }
   if (path === '/api/review') {
     const run = db.runs[url.searchParams.get('run')];
@@ -50,28 +50,28 @@ window.fetch = async (input, init = {}) => {
       db.runs[run.id] = run;
       save(db);
     }
-    return json({ state: stateDTO(db, run) });
+    return json(stateDTO(db, run));
   }
   if (path === '/api/next' || path === '/api/round') {
     const run = db.runs[data.runId];
     if (!run) return json({ error: 'Dive not found.' }, 404);
     if (!run.completed && run.round_start === null) { run.round_start = Date.now() + PREVIEW_MS; save(db); }
-    return json({ state: stateDTO(db, run) });
+    return json(stateDTO(db, run));
   }
   if (path === '/api/pause') {
     const run = db.runs[data.runId];
     if (run && !run.paused_at && run.round_start) { run.paused_at = Date.now(); save(db); }
-    return json({ state: stateDTO(db, run) });
+    return json(stateDTO(db, run));
   }
   if (path === '/api/resume') {
     const run = db.runs[data.runId];
     if (run?.paused_at) { run.round_start += Date.now() - run.paused_at; run.paused_at = null; save(db); }
-    return json({ state: stateDTO(db, run) });
+    return json(stateDTO(db, run));
   }
   if (path === '/api/answer') {
     const run = db.runs[data.runId];
     if (!run) return json({ error: 'Dive not found.' }, 404);
-    if (run.completed || run.round_start === null || data.round !== run.next_round) return json({ state: stateDTO(db, run), alreadyScored: true });
+    if (run.completed || run.round_start === null || data.round !== run.next_round) return json({ ...stateDTO(db, run), alreadyScored: true });
     const puzzle = puzzleFor(db, run.date), prompt = puzzle.prompts[run.next_round];
     const raw = typeof data.answer === 'string' ? data.answer.trim().slice(0, 256) : '';
     const late = Date.now() > run.round_start + ROUND_MS;
@@ -84,7 +84,7 @@ window.fetch = async (input, init = {}) => {
     run.round_start = null;
     if (run.next_round >= 7) run.completed = true;
     save(db);
-    return json({ result, state: stateDTO(db, run) });
+    return json({ result, ...stateDTO(db, run) });
   }
   return json({ ok: true });
 };
